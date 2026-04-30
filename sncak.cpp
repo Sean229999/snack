@@ -4,16 +4,16 @@
 #include<random>
 #include<ctime>
 #include<chrono>
-
+#include<sstream>
 using namespace std;
 
 #define height 20
-#define weight 30
+#define wdith 30
 
 
 //头部和坐标
-char head = 'H';
-int pos_x = weight / 2;
+char head = '@';
+int pos_x = wdith / 2;
 int pos_y = height / 2;
 
 //身体长度和坐标，默认为3
@@ -42,6 +42,17 @@ int randomNumGen(int l,int r){
     return u(e);
 }
 
+
+//获取控制台句柄
+HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+
+//光标移动函数，将输出光标移动到指定位置
+void gotoXY(int x,int y){
+    COORD pos = {(SHORT)x,(SHORT)y};
+    SetConsoleCursorPosition(hConsole,pos);
+}
+
+
 bool isOnBody(int x,int y){
     if(x == pos_x && y == pos_y){
         return true;
@@ -60,7 +71,7 @@ bool isOnBody(int x,int y){
 //生成食物
 void genFood(){
 
-    int x = randomNumGen(2,weight-1);
+    int x = randomNumGen(2,wdith-1);
     int y = randomNumGen(2,height-1);
 
     //防止生成到蛇身上
@@ -73,24 +84,20 @@ void genFood(){
 }
 
 //墙壁检测
-bool noWallY(int pos){
-    return (pos < height && pos >= 0);
-}
-bool noWallX(int pos){
-    return (pos < weight-1 && pos > 0);
-}
+// bool noWallY(int pos){
+//     return (pos < height && pos >= 0);
+// }
+// bool noWallX(int pos){
+//     return (pos < wdith-1 && pos > 0);
+// }
 
 //游戏结束条件
 bool isOver(){
     
     //判断是否碰到墙壁
-    if(pos_x <=0 || pos_x >= weight){
+    if(pos_x <= 0 || pos_x >= wdith-1 || pos_y <= 0 || pos_y >= height-1){
         return true;
     }
-    if(pos_y <=0 || pos_y >= height){
-        return true;
-    }
-
     //判断头部是否碰到身体
     for(int i = 0;i<length;i++){
         if(pos_x == body_x[i] && pos_y == body_y[i]){
@@ -118,11 +125,11 @@ void Move(int dir){
     }
     
     //碰到边界时从另一个方向出来
-    // if(pos_x >=weight+1){
+    // if(pos_x >=wdith+1){
     //     pos_x = 0;
     // }
     // else if(pos_x <= -1){
-    //     pos_x = weight;
+    //     pos_x = wdith;
     // }
 
     // if(pos_y >=height+1){
@@ -168,52 +175,61 @@ bool IsdrawFood(int x,int y){
 
 //绘制地图和蛇以及食物
 void draw(){
-    for(int i = 0;i<weight;i++){
-        cout << "#";
-    }
-    cout << endl;
+
+    //草稿图，将要输出的内容存到frame当中，用于解决闪烁问题
+    ostringstream frame;
+
+    // for(int i = 0;i<wdith;i++){
+    //     frame << "#";
+    // }
+    frame << endl;
     for(int j = 0;j<height;j++){
-        for(int i = 0;i<weight;i++){
-            if(i == 0 || i == weight - 1){
-                cout << "#";
+        for(int i = 0;i<wdith;i++){
+            if(i <= 0 || i >= wdith - 1 || j <= 0 || j >= height-1){
+                frame << "#";
             }
             else if(i == pos_x && j == pos_y){
-                cout << head;
+                frame << head;
             }
             else if(IsdrawBody(i,j)){
-                cout << "o";
+                frame << "o";
             }
             else if(IsdrawFood(i,j)){
-                cout << "*";
+                frame << "*";
             }
             else{
-                cout << " ";
+                frame << " ";
             }
         }
-        cout << endl;
+        frame << endl;
     }
-    for(int i = 0;i<weight;i++){
-        cout << "#";
-    }
-    cout << endl;
-    cout << "You have got " << score << " Score";
-    cout << endl;
+    // for(int i = 0;i<wdith;i++){
+    //     frame << "#";
+    // }
+
+    frame << "You have got " << score << " Score";
+    frame << endl;
     if(score < 50){
-        cout << "Come on budy,you can make it!";
+        frame << "Come on budy,you can make it!";
     }
     else if(score >= 50 && score < 100){
-        cout << "Great! You are a total master!";
+        frame << "Great! You are a total master!";
     }
     else if(score >=100 && score < 200){
-        cout << "Holy shit! that is fucking crazy!";
+        frame << "Holy shit! that is fucking crazy!";
     }
     else if(score >= 200){
-        cout << "You are GOAT!";
+        frame << "You are GOAT!";
     }
     else if(score >= 1000){
-        cout << "What can I say, Maba out";
+        frame << "What can I say, Maba out";
     }
-    cout << endl;
+    //frame << endl;
+
+    //将光标移动到左上角，从左上角开始输出
+    gotoXY(0,0);
+
+    cout << frame.str() << flush;
 
 }
 
@@ -243,6 +259,8 @@ void increaseLenght(int x,int y){
 }
 
 void init(){
+
+    system("cls");
 
     for(int i = 0;i<100;i++){
         body_x[i] = -1;
@@ -277,14 +295,17 @@ int main(){
     if(t == 's'){
         while(1){
             
-            draw();
+            //先判断是否结束在绘图，防止头部进入墙内
             if(isOver()){
+                gotoXY(0,height+3);
                 cout << "Game Over! You finally got " << score << " Score" << endl;
+                
                 return 0;
             }
-
+            
+            draw();
+            
             increaseLenght(pos_x,pos_y);
-
             snackbody();
             Move(dir);
 
@@ -303,18 +324,17 @@ int main(){
                     dir = 4;
                 }
                 if(ch == 'q'){
+                    gotoXY(0,height+3);
                     cout << "You finally got " << score << " Score" << endl;
                     break;
                 } 
             }
             
             Sleep(100);
-            system("cls");
         }
     }
     else if(t == 'q'){
         return 0;
     }
-    
     return 0;
 }
